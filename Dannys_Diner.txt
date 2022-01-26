@@ -1,0 +1,122 @@
+1. What is the total amount each customer spent at the restaurant?
+SELECT
+  	sales.customer_id,
+    sum(menu.price)
+FROM 
+  dannys_diner.sales, dannys_diner.menu
+WHERE 
+  sales.product_id = menu.product_id
+Group by sales.customer_id
+order by sales.customer_id
+
+
+2. How many days has each customer visited the restaurant?
+SELECT
+  	sales.customer_id,
+    count(distinct sales.order_date)
+FROM dannys_diner.sales
+group by sales.customer_id
+
+
+3. What was the first item from the menu purchased by each customer?
+SELECT
+  	distinct on (sales.customer_id)
+    sales.customer_id, sales.order_date, menu.product_name
+FROM 
+    dannys_diner.sales, dannys_diner.menu
+WHERE sales.product_id = menu.product_id
+order by sales.customer_id, sales.order_date
+
+
+4. What is the most purchased item on the menu and how many times was it purchased by all customers?
+SELECT
+  	product_id,
+    count(product_id)
+FROM 
+    dannys_diner.sales
+Group BY product_id
+order by product_id;
+
+SELECT
+customer_id,
+  	product_id,
+    count(product_id)
+    
+FROM 
+    dannys_diner.sales
+WHERE product_id = '3'
+Group BY customer_id, product_id
+order by product_id;
+
+5. Which item was the most popular for each customer?
+SELECT
+  	product_id,
+    count(product_id)
+FROM 
+    dannys_diner.sales
+Group BY product_id
+order by product_id;
+
+6. Which item was purchased first by the customer after they became a member?
+SELECT
+  customer_id,
+  order_date,
+  product_id
+FROM 
+  dannys_diner.sales
+WHERE 
+  order_date = (select min(order_date) from dannys_diner.sales group by customer_id limit 1)
+
+7. Which item was purchased just before the customer became a member?
+SELECT * FROM(
+  SELECT
+    s.customer_id, 
+    s.order_date,
+    s.product_id,
+    ROW_NUMBER() OVER(PARTITION BY s.customer_id 
+                    order by s.order_date desc) row_no
+  FROM 
+    dannys_diner.sales as s inner join dannys_diner.members as m
+    on s.customer_id = m.customer_id
+  WHERE s.order_date < m.join_date
+    ) sub
+where row_no = 1
+
+8. What is the total items and amount spent for each member before they became a member?
+SELECT
+    s.customer_id, 
+    count(s.product_id) as total_dishes_ate,
+    sum(m.price) as total_amount_spent
+FROM 
+ dannys_diner.sales as s inner join dannys_diner.menu as m
+  on s.product_id = m.product_id
+ inner join dannys_diner.members as mem
+ on mem.customer_id = s.customer_id
+WHERE s.order_date < mem.join_date
+group by s.customer_id 
+
+9. If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+SELECT
+  s.customer_id, 
+  sum(
+      case
+        when m.product_id = 1 then 2*m.price
+        else 10*m.price
+      end) as price 
+FROM 
+ dannys_diner.sales as s inner join dannys_diner.menu as m
+  on s.product_id = m.product_id
+group by s.customer_id 
+
+10 In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+
+SELECT
+  s.customer_id, 
+  sum(2*m.price)
+FROM 
+ dannys_diner.sales as s inner join dannys_diner.menu as m
+  on s.product_id = m.product_id
+  inner join dannys_diner.members as mem
+  on mem.customer_id = mem.customer_id
+WHERE s.order_date - mem.join_date >0 and s.order_date-mem.join_date <8
+group by s.customer_id 
